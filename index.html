@@ -1,127 +1,113 @@
+            output += `<p>✔ Q${i}: Correct - ${explanations["q"+i]}</p>`;
+        }else{
+            wrongSound.play();
+            output += `<p>❌ Q${i}: Wrong - ${explanations["q"+i]}</p>`;
+        }
+    }
 
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About My Family - Writing Exercise</title>
+    let time = new Date().toLocaleString();
 
-<style>
-body{
-    font-family: Arial, sans-serif;
-    max-width: 900px;
-    margin: auto;
-    padding: 20px;
-    background:#f4f6f9;
+    // UPDATE TAMPILAN RESULT
+    document.getElementById("result").innerHTML = `
+    <h3>🎯 Result</h3>
+    Name: ${name}<br>
+    Class: ${cls}<br>
+    Score: ${score}/10<br>
+    Time: ${time}<br>
+    <span id="save-status" style="color: #f39c12; font-weight: bold; margin-top:10px; display:inline-block;">🔄 Saving your score globally...</span>
+    `;
+
+    showPopup(output);
+
+    let dataToSave = {
+        quizType: "direction_beginner", 
+        name: name,
+        class: cls,
+        score: score,
+        time: time
+    };
+
+    fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "text/plain" 
+        },
+        body: JSON.stringify(dataToSave)
+    })
+    .then(response => response.json())
+    .then(data => {
+        let statusEl = document.getElementById("save-status");
+        if(data.result === "success") {
+            statusEl.innerHTML = "✔️ Score saved globally!";
+            statusEl.style.color = "#2ecc71";
+            loadRanking();
+        } else {
+            statusEl.innerHTML = "❌ Failed to save score.";
+            statusEl.style.color = "red";
+        }
+    })
+    .catch(error => {
+        let statusEl = document.getElementById("save-status");
+        statusEl.innerHTML = "❌ Error connecting to server.";
+        statusEl.style.color = "red";
+        console.error("Fetch error:", error);
+    });
 }
 
-.container{
-    background:white;
-    padding:25px;
-    border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,.1);
+// FETCH GLOBAL LEADERBOARD FROM GOOGLE SHEETS
+function loadRanking(){
+    let table = document.getElementById("ranking");
+    table.innerHTML = "<tr><td colspan='5' style='text-align:center;'>Loading Leaderboard... 🌍</td></tr>";
+
+    fetch(SCRIPT_URL + "?quizType=direction_beginner")
+    .then(response => response.json())
+    .then(data => {
+        if(data.result === "success") {
+            table.innerHTML = "";
+            let ranking = data.data;
+            
+            if(ranking.length === 0) {
+                table.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No scores yet. Be the first!</td></tr>";
+                return;
+            }
+
+            ranking.forEach((r,index)=>{
+                let badge = "";
+                if(index===0) badge="🥇 GOLD";
+                else if(index===1) badge="🥈 SILVER";
+                else if(index===2) badge="🥉 BRONZE";
+                else badge="—";
+
+                table.innerHTML += `
+                <tr>
+                <td>${badge}</td>
+                <td>${r.name}</td>
+                <td>${r.class}</td>
+                <td>${r.score}</td>
+                <td>${r.time}</td>
+                </tr>`;
+            });
+        } else {
+            table.innerHTML = "<tr><td colspan='5' style='text-align:center;color:red;'>Failed to load scores.</td></tr>";
+        }
+    })
+    .catch(error => {
+        table.innerHTML = "<tr><td colspan='5' style='text-align:center;color:red;'>Error fetching leaderboard.</td></tr>";
+        console.error("Leaderboard fetch error:", error);
+    });
 }
 
-h1,h2{
-    color:#2c3e50;
+function showPopup(html){
+    document.getElementById("explanations").innerHTML = html;
+    document.getElementById("popup").style.display = "flex";
 }
 
-textarea{
-    width:100%;
-    min-height:120px;
-    padding:10px;
-    margin-top:10px;
+function closePopup(){
+    document.getElementById("popup").style.display = "none";
 }
 
-input{
-    padding:8px;
-    margin:5px;
-}
+loadRanking();
 
-button{
-    background:#3498db;
-    color:white;
-    border:none;
-    padding:12px 20px;
-    border-radius:5px;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#2980b9;
-}
-
-.correct{
-    color:green;
-    font-weight:bold;
-}
-
-.wrong{
-    color:red;
-    font-weight:bold;
-}
-</style>
-</head>
-<body>
-
-<div class="container">
-
-<hr>
-
-<h2>Part A: Fill in the blanks</h2>
-
-<p>1. Kelly lives in
-<input id="q1"></p>
-
-<p>2. Kelly's mother's name is
-<input id="q2"></p>
-
-<p>3. Kelly's father works in a
-<input id="q3"></p>
-
-<p>4. Kelly's sister loves listening to
-<input id="q4"></p>
-
-<p>5. Brandy is a pet
-<input id="q5"></p>
-
-<button onclick="checkAnswers()">Check Answers</button>
-
-<p id="result"></p>
-
-<hr>
-
-<h2>Part B: Write About Your Family</h2>
-
-<p>Write 5–8 sentences about your family.</p>
-
-<textarea placeholder="My name is..."></textarea>
-
-</div>
-
-<script>
-function checkAnswers(){
-
-let score = 0;
-
-const answers = {
-q1:"california",
-q2:"carmen",
-q3:"bank",
-q4:"music",
-q5:"dog"
-};
-
-for(let id in answers){
-let user = document.getElementById(id).value.trim().toLowerCase();
-
-if(user === answers[id]){
-score++;
-}
-}
-
-document.getElementById("result").innerHTML =
-"You got " + score + " out of 5 correct!";
-}
 </script>
 
 </body>
